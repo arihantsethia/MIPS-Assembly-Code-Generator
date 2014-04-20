@@ -23,11 +23,11 @@
 
 const static std::string opString[4]= {"*","/","+","-"};
 const static std::string  condString[6] = {"<",">","=","<=",">=","!"};
-
+const static std::string  dataString[6] = {"INT","INTPTR","VOID","VOIDPTR"};
 class AST {
 public:
 	enum NodeType{
-		OPERATION, CONDITION, VARIABLE, ASSIGN, A_WHILE, A_IF, BRANCH, CONSTANT, UNKNOWN
+		EPSILON, CONSTANT, VARIABLE, OPERATION, CONDITION, ASSIGN, A_WHILE, A_IF, A_ELSE, BRANCH, STATEMENT, FUNCTION, ARG_LIST, ARGD, VARD, F_TYPE, D_TYPE, ID_LIST
 	};
 	enum OpType{
 		MUL, DIV, ADD, SUB
@@ -35,7 +35,9 @@ public:
 	enum CondType{
 		LT, GT, EQ, LTE , GTE , A_NOT
 	};
-
+	enum DataType{
+		INT, INTPTR, VOID, VOIDPTR
+	};
 	int childLength;
 	void *data;
 	NodeType nType;
