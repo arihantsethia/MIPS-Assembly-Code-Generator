@@ -23,7 +23,9 @@
 
 class MIPS{
 private:
-
+	static int currentId = -1;
+	static std::map<std::string,bool> keywords;
+	static std::map<std::string,std::string> registerMapping;
 public:
 	MIPS();
 	MIPS(std::string);

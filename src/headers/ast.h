@@ -27,31 +27,35 @@ const static std::string  condString[6] = {"<",">","=","<=",">=","!"};
 class AST {
 public:
 	enum NodeType{
-		OPERATION, CONDITION, VARIABLE, ASSIGN, WHILE, IF, BRANCH, CONSTANT, UNKNOWN
+		OPERATION, CONDITION, VARIABLE, ASSIGN, A_WHILE, A_IF, BRANCH, CONSTANT, UNKNOWN
 	};
 	enum OpType{
 		MUL, DIV, ADD, SUB
 	};
 	enum CondType{
-		LT, GT, EQ, LTE , GTE , NOT
+		LT, GT, EQ, LTE , GTE , A_NOT
 	};
 
 	int childLength;
 	void *data;
 	NodeType nType;
-	AST* childrens;
+	AST** childrens;
 	AST();
-	AST(int);		
+	AST(const AST&);
+	AST(int);
 	AST(NodeType T, void* _data);
-	AST(NodeType T, AST* _childrens, int length);
-	AST(NodeType T, void*, AST* _childrens, int length);
+	AST(NodeType T, AST** _childrens, int length);
+	AST(NodeType T, void*, AST** _childrens, int length);
+	~AST();
 	void setNode();
-	void setNode(int);		
+	void setNode(int);
 	void setNode(NodeType T, void* _data);
-	void setNode(NodeType T, AST* _childrens, int length);
-	void setNode(NodeType T, void*, AST* _childrens, int length);
-	~AST();	
-
+	void setNode(NodeType T, AST** _childrens, int length);
+	void setNode(NodeType T, void*, AST** _childrens, int length);
+	
+	AST* clone();
+	void* clone(void*);
+	AST& operator=(const AST& );
 	void print();
 };
 
