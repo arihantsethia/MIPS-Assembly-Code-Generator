@@ -23,36 +23,48 @@
 
 const static std::string opString[4]= {"*","/","+","-"};
 const static std::string  condString[6] = {"<",">","=","<=",">=","!"};
-
+const static std::string  dataString[4] = {"INT","INTPTR","VOID","VOIDPTR"};
 class AST {
 public:
 	enum NodeType{
-		OPERATION, CONDITION, VARIABLE, ASSIGN, WHILE, IF, BRANCH, CONSTANT, UNKNOWN
+		EPSILON, CONSTANT, VARIABLE, OPERATION, CONDITION, ASSIGN, A_WHILE, A_IF, A_ELSE, BRANCH, STATEMENT, FUNC, ARG_LIST, ARGD, VARD, F_TYPE, D_TYPE, ID_LIST
 	};
 	enum OpType{
 		MUL, DIV, ADD, SUB
 	};
 	enum CondType{
-		LT, GT, EQ, LTE , GTE , NOT
+		LT, GT, EQ, LTE , GTE , A_NOT
 	};
-
+	enum DataType{
+		_INT, _INTPTR, _VOID, _VOIDPTR
+	};
 	int childLength;
 	void *data;
 	NodeType nType;
-	AST* childrens;
+	AST** childrens;
+	std::string code;
+	std::string reg;
+	std::string label;
 	AST();
-	AST(int);		
+	AST(const AST&);
+	AST(int);
 	AST(NodeType T, void* _data);
-	AST(NodeType T, AST* _childrens, int length);
-	AST(NodeType T, void*, AST* _childrens, int length);
+	AST(NodeType T, AST** _childrens, int length);
+	AST(NodeType T, void*, AST** _childrens, int length);
+	~AST();
 	void setNode();
-	void setNode(int);		
+	void setNode(int);
 	void setNode(NodeType T, void* _data);
-	void setNode(NodeType T, AST* _childrens, int length);
-	void setNode(NodeType T, void*, AST* _childrens, int length);
-	~AST();	
-
+	void setNode(NodeType T, AST** _childrens, int length);
+	void setNode(NodeType T, void*, AST** _childrens, int length);
+	
+	AST* clone();
+	void* clone(void*);
+	AST& operator=(const AST& );
 	void print();
+	void addCode(std::string);
+	std::string getCode();
+	void resetCode(std::string);
 };
 
 #endif
