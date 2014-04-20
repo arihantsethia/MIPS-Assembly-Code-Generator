@@ -1,30 +1,41 @@
 #include "headers/mipsGenerator.h"
 #include "headers/utility.h"
+#include "keywords.h"
+#include "mipsLex.h"
 
 MIPS::MIPS(){
 
 }
 
 MIPS::MIPS(std::string _fileName){
-	std::ifstream in(_fileName.c_str());
+	keywords = {{"if",true},{"goto",true},{"param",true},{"call",true}};
 	std::ofstream out(("mips_"+_fileName).c_str());
-	std::string line,label;
-	std::string::size_type pos;
-	std::vector<std::string> tokens;
-	while(!in.eof()){
-		std::getline(in,line);
-		label = "";
-		if(hasLabel(line)){
-			std::string::size_type pos = line.find(":");
-			label = line.substr(0,pos);
-			label = trim(label);
-			line = line.substr(pos);
+	freopen(file_name.c_str(), "r", stdin);
+	string s;
+	generateCode();
+	fclose(stdin);
+}
+
+void generateCode(){
+	string tempName,tempVar;
+	if(match(REGISTER)){
+		tempName.assign(yytext,yytext+yyleng);
+		advance();
+		if(match(EQUALS)){
+			advance();
+			tempVar = getExpression();
 		}
-		trim(line);
-		tokens = tokenize(line," ");
 	}
 }
 
-bool MIPS::hasLabel(std::string str){
-	return true;
+bool match(int token) {
+	if(currentId == -1)
+		currentId = yylex();
+	return token == currentId;
+}
+
+void advance(void){
+	/* Advance the lookahead to the next
+	   input symbol.                               */
+	currentId = yylex();
 }
