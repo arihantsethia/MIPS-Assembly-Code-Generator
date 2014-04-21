@@ -5,7 +5,7 @@
 
 const static std::string opString[4]= {"*","/","+","-"};
 const static std::string  condString[6] = {"<",">","=","<=",">=","!"};
-const static std::string  dataString[4] = {"INT","INTPTR","VOID","VOIDPTR"};
+const static std::string  dataString[4] = {"INT","BOOL","FLOAT","VOID"};
 class AST {
 public:
 	enum NodeType{
@@ -36,11 +36,6 @@ public:
 	AST(NodeType T, AST** _childrens, int length);
 	AST(NodeType T, void*, AST** _childrens, int length);
 	~AST();
-	void setNode();
-	void setNode(int);
-	void setNode(NodeType T, void* _data);
-	void setNode(NodeType T, AST** _childrens, int length);
-	void setNode(NodeType T, void*, AST** _childrens, int length);
 	
 	AST* clone();
 	void* clone(void*);
