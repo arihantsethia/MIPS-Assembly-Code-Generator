@@ -26,5 +26,5 @@ $(YACC_EXECUTABLE): $(wildcard src/*)
 clean:
 	@- $(RM) $(YACC_EXECUTABLE)
 	@- $(RM) $(PARSER_OBJECTS)
-	$(MAKE) -C yacc $@
+	$(MAKE) -C src $@
 distclean: clean
