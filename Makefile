@@ -1,25 +1,30 @@
-program_NAME := cpftp
-program_CXX_SRCS := $(wildcard src/*.cpp) $(wildcard src/libs/*.cpp)
-program_CXX_OBJS := ${program_CXX_SRCS:.cpp=.o}
-program_OBJS := $(program_C_OBJS) $(program_CXX_OBJS)
+BUILD_SUBDIRS = yacc
+GRAMMAR_SOURCES = src/ast.cpp src/symbolTable.cpp
+YACC_OBJECTS = $(GRAMMAR_SOURCES:.cpp=.o) src/lex.yy.o src/y.tab.o
+YACC_EXECUTABLE = yaccparser
+
 program_INCLUDE_DIRS :=
 program_LIBRARY_DIRS :=
 program_LIBRARIES :=
 
+CC = g++
 CPPFLAGS += $(foreach includedir,$(program_INCLUDE_DIRS),-I$(includedir))
 LDFLAGS += $(foreach librarydir,$(program_LIBRARY_DIRS),-L$(librarydir))
 LDFLAGS += $(foreach library,$(program_LIBRARIES),-l$(library))
 
-.PHONY: all clean distclean
 
-all: $(program_NAME)
+.PHONY: all clean distclean grammar_exeuytable parser_executable yacc_executable
 
-$(program_NAME): $(program_OBJS)
-	$(LINK.cc) $(program_OBJS) -o $(program_NAME)
+all: executable
+
+executable: $(YACC_EXECUTABLE)
+
+$(YACC_EXECUTABLE): $(wildcard src/*)
+	$(MAKE) -C src
+	$(CC) $(YACC_OBJECTS) -o $(YACC_EXECUTABLE)
 
 clean:
-	@- $(RM) $(program_NAME)
-	@- $(RM) $(program_OBJS)
-
+	@- $(RM) $(YACC_EXECUTABLE)
+	@- $(RM) $(PARSER_OBJECTS)
+	$(MAKE) -C yacc $@
 distclean: clean
-

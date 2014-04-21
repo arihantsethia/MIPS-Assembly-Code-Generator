@@ -1,25 +1,7 @@
 #ifndef AST_H
 #define AST_H
 
-#include <iostream>
-#include <string>
-#include <climits>
-#include <cstdio>
-#include <cstdlib>
-#include <cmath>
-#include <vector>
-#include <algorithm>
-#include <sstream>
-#include <fstream>
-#include <utility>
-#include <queue>
-#include <stack>
-#include <map>
-#include <set>
-#include <cstring>
-#include <list>
-#include <iomanip>
-
+#include "headers.h"
 
 const static std::string opString[4]= {"*","/","+","-"};
 const static std::string  condString[6] = {"<",">","=","<=",">=","!"};
@@ -27,24 +9,26 @@ const static std::string  dataString[4] = {"INT","INTPTR","VOID","VOIDPTR"};
 class AST {
 public:
 	enum NodeType{
-		EPSILON, CONSTANT, VARIABLE, OPERATION, CONDITION, ASSIGN, A_WHILE, A_IF, A_ELSE, BRANCH, STATEMENT, FUNC, ARG_LIST, ARGD, VARD, F_TYPE, D_TYPE, ID_LIST
+		_EPSILON, _CONSTANT, _VARIABLE, _OPERATION, _CONDITION, _ASSIGN, _WHILE, _IF, _ELSE, _BRANCH, _STATEMENT, _FUNCTION, _ARGLIST, _ARG, _VAR, _FTYPE, _DTYPE, _IDLIST
 	};
 	enum OpType{
 		MUL, DIV, ADD, SUB
 	};
 	enum CondType{
-		LT, GT, EQ, LTE , GTE , A_NOT
+		LT, GT, EQ, LTE , GTE , NT
 	};
 	enum DataType{
-		_INT, _INTPTR, _VOID, _VOIDPTR
+		_INT, _BOOL, _FLOAT, _VOID
 	};
 	int childLength;
 	void *data;
 	NodeType nType;
+	DataType dType;
 	AST** childrens;
 	std::string code;
 	std::string reg;
-	std::string label;
+	std::string value;
+	std::string revValue;
 	AST();
 	AST(const AST&);
 	AST(int);
@@ -62,9 +46,11 @@ public:
 	void* clone(void*);
 	AST& operator=(const AST& );
 	void print();
-	void addCode(std::string);
+	void addCode(std::string,std::string end="\n");
 	std::string getCode();
-	void resetCode(std::string);
+	void setCode(std::string,std::string end="\n");
+	std::string getValue();
+	std::string getRevValue();
 };
 
 #endif

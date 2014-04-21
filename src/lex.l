@@ -11,103 +11,66 @@ IS			(u|U|l|L)*
 	#include <stdio.h>
 	#include "y.tab.h"
 	#include "headers/ast.h"
-	//extern YYSTYPE yyval ;
 %}
 
 %%
-[ \t\n\b]					;
-"auto" 		return AUTO ;
-"break" 		return BREAK ;
-"case" 		return CASE ;
-"char" 		return CHAR ;
-"const" 		return CONST ;
-"continue" 		return CONTINUE ;
-"default" 		return DEFAULT ;
-"do" 		return DO ;
-"double" 		return DOUBLE ;
-"else" 		return ELSE ;
-"enum" 		return ENUM ;
-"extern" 		return EXTERN ;
-"float" 		return FLOAT ;
-"for" 		return FOR ;
-"goto" 		return GOTO ;
-"if" 		return IF ;
-"int" 		return INT ;
-"long" 		return LONG ;
-"register" 		return REGISTER ;
-"return" 		return RETURN ;
-"short" 		return SHORT ;
-"signed" 		return SIGNED ;
-"sizeof" 		return SIZEOF ;
-"static" 		return STATIC ;
-"struct" 		return STRUCT ;
-"switch" 		return SWITCH ;
-"typedef" 		return TYPEDEF ;
-"union" 		return UNION ;
-"unsigned" 		return UNSIGNED ;
-"void" 		return VOID ;
-"volatile" 		return VOLATILE ;
-"while" 		return WHILE ;
-"+" 		return PLUS ;
-"-" 		return MINUS ;
-"*" 		return TIMES ;
-"/" 		return DIVIDE ;
-"%" 		return MODULO ;
-"=" 		return EQUALS ;
-"&" 		return BITAND ;
-"|" 		return BITOR ;
-"^" 		return BITXOR ;
-"!" 		return NOT ;
-"<" 		return LESS ;
-">" 		return GREATER ;
-"#" 		return HASH ;
-"$" 		return DOLLAR ;
-"@" 		return ATRATE ;
-"[" 		return LS ;
-"]" 		return RS ;
-"{" 		return LB ;
-"}" 		return RB ;
-"(" 		return LP ;
-")" 		return RP ;
-"?" 		return QMARK ;
-":" 		return COLON ;
-"." 		return DOT ;
-";" 		return SEMI ;
-"," 		return COMMA ;
-"+=" 		return PLUSEQ ;
-"-=" 		return MINUSEQ ;
-"*=" 		return TIMESEQ ;
-"/=" 		return DIVEQ ;
-"%=" 		return MODULOEQ ;
-"&=" 		return EMPEQ ;
-"&&" 		return AND ;
-"||" 		return OR ;
-"==" 		return REQUALS ;
-"!=" 		return NOTEQUAL ;
-"<=" 		return LESSEQ ;
-">=" 		return GREATEREQ ;
-"++" 		return INCR ;
-"--" 		return DECR ;
-"<<" 		return LSHIFT ;
-">>" 		return RSHIFT ;
-"|=" 		return OREQ ;
-"^=" 		return XOREQ ;
-"->" 		return PTRREF ;
-"<<=" 		return LSHIFTEQ ;
-">>=" 		return RSHIFTEQ ;
+[ \t\n\b]	;
+"auto" 		return AUTO;
+"char" 		return CHAR;
+"else" 		return ELSE;
+"float" 	return FLOAT;
+"if" 		return IF;
+"int" 		return INT;
+"long" 		return LONG;
+"while" 	return WHILE;
+"bool"		return BOOL;
+"true"		{
+				yylval.vBool = true;
+				return BOOLEAN;
+			}
+"false"		{
+				yylval.vBool = false;
+				return BOOLEAN;
+			}
+"+" 		return PLUS;
+"-" 		return MINUS;
+"*" 		return TIMES;
+"/" 		return DIVIDE;
+"=" 		return EQUALS;
+"<" 		return LESS;
+">" 		return GREATER;
+"[" 		return LS;
+"]" 		return RS;
+"{" 		return LB;
+"}" 		return RB;
+"(" 		return LP;
+")" 		return RP;
+":" 		return COLON;
+"." 		return DOT;
+";" 		return SEMI;
+"," 		return COMMA;
+"&&" 		return AND;
+"||" 		return OR;
+"==" 		return REQUALS;
+"!=" 		return NOTEQUAL;
+"<=" 		return LESSEQ;
 
 {L}({L}|{D})*	{
-					yylval.name  = strdup(yytext) ;
-					return ID ;
+					yylval.vId = strdup(yytext);
+					return ID;
 				} 
 {D}({D})*		{	
-					yylval.number  = atoi(strdup(yytext)) ;
-					return NUMBER ;
+					yylval.vInt = atoi(strdup(yytext));
+					return NUMBER;
+				}
+{D}*"."{D}+({E})?{FS}?	{
+					yylval.vFloat = atof(strdup(yytext));
+					return DECIMAL ;
 				}
 .				{ /* ignore bad characters */ }
 %%
 
 int yywrap(void)
 {
-	return 1 ;
+	return 1;
 }

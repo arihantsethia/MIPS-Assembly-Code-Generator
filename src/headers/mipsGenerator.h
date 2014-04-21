@@ -1,25 +1,7 @@
 #ifndef MIPS_H
 #define MIPS_H
 
-#include <iostream>
-#include <string>
-#include <climits>
-#include <cstdio>
-#include <cstdlib>
-#include <cmath>
-#include <vector>
-#include <algorithm>
-#include <sstream>
-#include <fstream>
-#include <utility>
-#include <queue>
-#include <stack>
-#include <map>
-#include <set>
-#include <cstring>
-#include <list>
-#include <iomanip>
-
+#include "headers.h"
 
 class MIPS{
 private:

@@ -1,355 +1,418 @@
 %{
-	#include <stdio.h>
-	#include <string.h>
-	#include <string>
-	#include <sstream>
-	#include "headers/ast.h"
-	extern char* yytext ;
-	extern int yylineno ;
-	extern int yylex(void);	
-	int yyerror(char *);
-	std::string getRegister();
-	std::string getLabel();
-	static int lcount=0,rcount=0;
-
+	#include "headers/grammar.h"
+	AST **node;
 %}
 	%union
 	{
-		class AST* node ;
-		int number ;
-		char* name ;
+		class AST* vNode;
+		int vInt;
+		float vFloat;
+		bool vBool;
+		char* vId;
 	}
 
-	%type <node> EXPR RVALUE MAG TERM FACTOR COMPARE FUNCTION ARGLIST ARG FTYPE STMT DECLARATION DTYPE IDLIST WHILESTMT IFSTMT ELSEPART CMPDSTMT STMTLIST
+	%type <vNode>	EXPR	MAG	TERM	FACTOR	COMPARE	FUNCTION	ARGLIST	ARG	FTYPE	STMT	DECLARATION	DTYPE	IDLIST	WHILESTMT	IFSTMT	ELSEPART	CMPDSTMT	STMTLIST	ASSIGN
 
-	%token <number>		NUMBER
-	%token <name>	ID
-	%start FUNCTION
+	%token <vInt>	NUMBER
+	%token <vId>	ID
+	%token <vBool>	BOOLEAN
+	%token <vFloat> DECIMAL
+	%start STMT
 	
-	%token AUTO   BREAK   CASE   CHAR   CONST   CONTINUE   DEFAULT   DO   DOUBLE   ELSE   ENUM   EXTERN   FLOAT   FOR   GOTO   IF   INT   LONG   REGISTER   RETURN   SHORT   SIGNED   SIZEOF   STATIC   STRUCT   SWITCH   TYPEDEF   UNION   UNSIGNED   VOID   VOLATILE   WHILE   PLUS   MINUS   TIMES   DIVIDE   MODULO   EQUALS   BITAND   BITOR   BITXOR   NOT   LESS   GREATER   HASH   DOLLAR   ATRATE   LS   RS   LB   RB   LP   RP   QMARK   COLON   DOT   SEMI   COMMA   PLUSEQ   MINUSEQ   TIMESEQ   DIVEQ   MODULOEQ   EMPEQ   AND   OR   REQUALS   NOTEQUAL   LESSEQ   GREATEREQ   INCR   DECR   LSHIFT   RSHIFT   OREQ   XOREQ   PTRREF   LSHIFTEQ   RSHIFTEQ REAL INTPTR 
+	%token	AUTO	BOOL	CHAR	ELSE	FLOAT	IF	INT	LONG	RETURN	SIGNED	WHILE	PLUS	MINUS	TIMES	DIVIDE	EQUALS	NOT	LESS	GREATER	LS	RS	LB	RB	LP	RP	COLON	DOT	SEMI	COMMA	AND	OR	REQUALS	NOTEQUAL	LESSEQ	GREATEREQ
 
 	%nonassoc LOWER_THAN_ELSE
 	%nonassoc ELSE
 
 %%
-	FUNCTION:	FTYPE ID LP ARGLIST RP CMPDSTMT
-			{
-				std::string funcName($2);
-				AST **p = new AST*[4] ;
-				p[0] = $1 ;
-				p[1] = new AST(AST::VARIABLE,&funcName) ;
-				p[2] = $4 ;
-				p[3] = $6 ;
-				$$ = new AST(AST::FUNC,p,4) ;
-				$$->print() ;
-			}
+FUNCTION: FTYPE ID LP ARGLIST RP CMPDSTMT {
+			std::string id($2);
+			node = new AST*[4];
+			node[0] = $1;
+			node[1] = new AST(AST::_VARIABLE,&id);
+			node[2] = $4;
+			node[3] = $6;
+			$$ = new AST(AST::_FUNCTION,node,4);
+		}
+		;
+ARGLIST: ARG{
+			$$ = $1;
+		}
+		|ARG COMMA ARGLIST {
+			node = new AST*[2];
+			node[0] = $1;
+			node[1] = $3;
+			$$ = new AST(AST::_ARGLIST,node,2);
+		}
+		| {
+			$$ = new AST(0);
+		}
+		;
+ARG: DTYPE ID {
+		std::string id($2);
+		node = new AST*[2];
+		node[0] = $1;
+		node = new AST(AST::_VARIABLE,&id);
+		$$ = new AST(AST::_ARG,node,2);
+	}
 	;
-	ARGLIST:	ARG
-			{
-				$$ = $1 ;
-			}
-			|	ARG COMMA ARGLIST
-			{
-				AST **p = new AST*[2] ;
-				p[0] = $1 ;
-				p[1] = $3 ;
-				$$ = new AST(AST::ARG_LIST,p,2) ;
-			}
-			|
-			{
-				$$ = new AST(0) ;
-			}
+FTYPE: INT {
+		AST::DataType x = AST::_INT;
+		$$ = new AST(AST::_FTYPE,&x);
+		$$->dType = AST::_INT;
+	}
+	| FLOAT {
+		AST::DataType x = AST::_FLOAT;
+		$$ = new AST(AST::_FTYPE,&x);
+		$$->dType = AST::_FLOAT;
+	}
+	| BOOL {
+		AST::DataType x = AST::_BOOL;
+		$$ = new AST(AST::_FTYPE,&x);
+		$$->dType = AST::_BOOL;
+	}
 	;
-	ARG:	DTYPE ID
-			{
-				AST **p = new AST*[2] ;
-				p[0] = $1 ;
-				std::string s($2);
-				p[1] = new AST(AST::VARIABLE,&s) ;
-				$$ = new AST(AST::ARGD,p,2) ;
-			}
+STMT: WHILESTMT {
+		$$ = $1;
+	}
+	|ASSIGN SEMI {
+		$$ = $1;
+	}
+	|IFSTMT {
+		$$ = $1;
+	}
+	|CMPDSTMT {
+		$$ = $1;
+	}
+	|DECLARATION {
+		$$ = $1;
+	}
+	|SEMI {
+		$$ = new AST(0);
+	}
 	;
-	FTYPE:	INT 
-			{
-				AST::DataType x = AST::_INT;
-				$$ = new AST(AST::F_TYPE,&x);
+DECLARATION: DTYPE IDLIST SEMI {
+				node = new AST*[2];
+				node[0] = $1;
+				node[1] = $2;
+				$$ = new AST(AST::_VAR,node,2);
 			}
-			| VOID 
-			{
-				AST::DataType x = AST::_VOID ;
-				$$ = new AST(AST::F_TYPE,&x);
+			;
+DTYPE: INT {
+			AST::DataType x = AST::_INT;
+			$$ = new AST(AST::_DTYPE,&x);
+			$$->dType = AST::_INT;
+		}
+		| FLOAT {
+			AST::DataType x = AST::_FLOAT;
+			$$ = new AST(AST::_FTYPE,&x);
+			$$->dType = AST::_FLOAT;
+		}
+		| BOOL {
+			AST::DataType x = AST::_BOOL;
+			$$ = new AST(AST::_FTYPE,&x);
+			$$->dType = AST::_BOOL;
+		}
+		;
+IDLIST:	ID {
+			std::string id($1);
+			if(getDataType(id,scope)!=AST::_VOID){
+				return 1;
 			}
-			| INTPTR
-			{
-				AST::DataType x = AST::_INTPTR ;
-				$$ = new AST(AST::F_TYPE,&x);
+			$$ = new AST(AST::_VARIABLE,&id);
+		}
+		|ID LS NUMBER RS {
+			std::string id($1);
+			node = new AST*[2];
+			node[0] = new AST(AST::_VARIABLE,&id);
+			node[1] = new AST(AST::_CONSTANT,&$3);
+			$$ = new AST(AST::_VARIABLE,node,2);
+		}
+		|ID COMMA IDLIST {
+			std::string id($1);
+			if((getDataType(id,scope) != $3->dType) || (getDataType(id,scope) != AST::_VOID)){
+				return 1;
 			}
+			node = new AST*[2];
+			node[0] = new AST(AST::_VARIABLE,&id);
+			node[1] = $3;
+			$$ = new AST(AST::_IDLIST,node,2);
+		}
+		|ID LS NUMBER RS COMMA IDLIST {
+			std::string id($1);
+			node = new AST*[3];
+			node[0] = new AST(AST::_VARIABLE,&id);
+			node[1] = new AST(AST::_CONSTANT,&$3);
+			node[2] = $6;
+			$$ = new AST(AST::_IDLIST,node,3);
+		}
+		;
+WHILESTMT: WHILE LP EXPR RP STMT {
+				if($3->dType != AST::_BOOL || $5->dType != AST::_VOID){
+					return 1;
+				}
+				node = new AST*[2];
+				node[0] = $3;
+				node[1] = $5;
+				std::string label = getLabel();
+				$$ = new AST(AST::_BRANCH,node,2);
+				$$->setCode($3->getCode());
+				$$->addCode(label+": if "+$3->getRevValue()+" goto "+getLabel());
+				$$->addCode($5->getCode(),"");
+				$$->addCode("goto "+label);
+				$$->addCode(getLabel(lcount)+": ","");
+			}
+			;
+IFSTMT:	IF LP EXPR RP STMT ELSEPART {
+			if($3->dType != AST::_BOOL || $5->dType != AST::_VOID || $6->dType != AST::_VOID){
+				return 1;
+			}
+			node = new AST*[3];
+			node[0] = $3;
+			node[1] = $5;
+			node[2] = $6;
+			$$ = new AST(AST::_BRANCH,node,3);
+			$$->setCode($3->getCode());
+			$$->addCode("if "+$3->getRevValue()+" goto "+getLabel());
+			$$->addCode($5->getCode(),"");
+			$$->addCode(getLabel(lcount)+": "+$6->getCode());
+			$$->dType = AST::_VOID;
+		}
+		;
+ELSEPART:ELSE STMT {
+			node = new AST*[1];
+			node[0] = $2;
+			$$ = new AST(AST::_ELSE,node,1);
+			$$->addCode($2->getCode());
+			$$->dType = AST::_VOID;
+		}
+		|%prec LOWER_THAN_ELSE {
+			$$ = new AST(0);
+			$$->dType = AST::_VOID;
+		} 
+		;
+CMPDSTMT: LB STMTLIST RB {
+			$$ = $2;
+			$$->dType = AST::_VOID;
+		}
+		;
+STMTLIST: STMT STMTLIST {
+			if($1->dType != AST::_VOID || $2->dType != AST::_VOID){
+				return 1;
+			}
+			node = new AST*[2];
+			node[0] = $1;
+			node[1] = $2;
+			$$ = new AST(AST::_STATEMENT,node,2);
+			$$->setCode($1->getCode()+$2->getCode(),"");
+			$$->dType = AST::_VOID;
+		}
+		| {
+			$$ = new AST(0);
+		}
+		;
+ASSIGN:	ID EQUALS EXPR {
+			std::string id($1);
+			if(getDataType(id,scope) == AST::_VOID || getDataType(id,scope) != $3->dType){
+				return 1;
+			}
+			node = new AST*[2];
+			node[0] = new AST(AST::_VARIABLE,&id);
+			node[1] = $3;
+			$$ = new AST(AST::_ASSIGN,node,2);
+			$$->setCode($3->getCode(),"");
+			$$->addCode(id+" := "+$3->getValue());
+			$$->dType =AST::_VOID;
+		}
+		;
+EXPR: EXPR COMPARE MAG {
+		if( ($1->dType == $3->dType) && ($1->dType != AST::_VOID) ){
+			return 1;
+		}
+		$$ = $2;
+		$$->childLength=2;
+		$$->childrens = new AST*[2];
+		$$->childrens[0] = $1;
+		$$->childrens[1] = $3;
+		$$->setCode($1->getCode(),"");
+		$$->setCode($3->getCode(),"");
+		$$->value = $1->getValue()+$2->getCode()+$3->getValue()	;
+		$$->revValue = $1->getValue()+oppSymbol($2->getCode())+$3->getValue();
+		$$->dType = AST::_BOOL;
+	}
+	|MAG {
+		$$ = $1;
+	}
+	|BOOLEAN{
+		$$ = new AST(AST::_CONSTANT,&$1);
+		SS->dType = AST::_BOOL;
+	}
 	;
-	STMT:		WHILESTMT
-			{
-				$$ = $1 ;
-			}
-			|	EXPR SEMI
-			{
-				$$ = $1 ;
-			}
-			|	IFSTMT
-			{
-				$$ = $1 ;
-			}
-			|	CMPDSTMT
-			{
-				$$ = $1 ;
-			}
-			|	DECLARATION
-			{
-				$$ = $1 ;
-			}
-			|	SEMI
-			{
-				$$ = new AST(0) ;
-			}
+COMPARE:REQUALS	{
+		AST::CondType x = AST::EQ;
+		$$ = new AST(AST::_CONDITION,&x);
+		$$->setCode(" == ","");
+	}
+	|LESS {
+		AST::CondType x = AST::LT;
+		$$ = new AST(AST::_CONDITION,&x);
+		$$->setCode(" < ","");
+	}
+	|GREATER {
+		AST::CondType x = AST::GT;
+		$$ = new AST(AST::_CONDITION,&x);
+		$$->setCode(" >= ","");
+	}
+	|LESSEQ {
+		AST::CondType x = AST::LTE;
+		$$ = new AST(AST::_CONDITION,&x);
+		$$->setCode(" <= ","");
+	}
+	|GREATEREQ {
+		AST::CondType x = AST::GTE;
+		$$ = new AST(AST::_CONDITION,&x);
+		$$->setCode(" >= ","");
+	}
+	|NOTEQUAL {
+		AST::CondType x = AST::NT;
+		$$ = new AST(AST::_CONDITION,&x);
+		$$->setCode(" != ","");
+	}
 	;
-	DECLARATION:	DTYPE IDLIST SEMI
-			{
-				AST **p = new AST*[2] ;
-				p[0] = $1 ;
-				p[1] = $2 ;
-				$$ = new AST(AST::VARD,p,2) ;
-			}
+MAG: MAG PLUS TERM {
+		if( ($1->dType != $3->dType) && ($1->dType != AST::_VOID) ){
+			return 1;
+		}
+		node = new AST*[2];
+		node[0] = ($1);
+		node[1] = ($3);
+		AST::OpType x = AST::ADD;
+		$$ = new AST(AST::_OPERATION,&x,node,2);
+		$$->reg = getRegister();
+		$$->setCode($1->getCode(),"");
+		$$->addCode($3->getCode(),"");
+		$$->addCode($$->getValue()+" := "+$1->getValue()+" + "+$3->getValue());	
+	}
+	|MAG MINUS TERM {
+		if( ($1->dType != $3->dType) && ($1->dType != AST::_VOID) ){
+			return 1;
+		}
+		node = new AST*[2];
+		node[0] = $1;
+		node[1] = $3;
+		AST::OpType x = AST::SUB;
+		$$ = new AST(AST::_OPERATION,&x,node,2);
+		$$->reg = getRegister();
+		$$->setCode($1->getCode(),"");
+		$$->addCode($3->getCode(),"");
+		$$->addCode($$->getValue()+" := "+$1->getValue()+" - "+$3->getValue());	
+	}
+	|TERM {
+		$$ = $1;
+	}
 	;
-	DTYPE:		INT
-			{
-				AST::DataType x = AST::_INT;
-				$$ = new AST(AST::D_TYPE,&x);
-			}
-			|	INTPTR
-			{
-				AST::DataType x = AST::_INTPTR;
-				$$ = new AST(AST::D_TYPE,&x);
-			}
+TERM: TERM TIMES FACTOR {
+		if( ($1->dType != $3->dType) && ($1->dType != AST::_VOID) ){
+			return 1;
+		}
+		node = new AST*[2];
+		node[0] = $1;
+		node[1] = $3;
+		AST::OpType x = AST::MUL;
+		$$ = new AST(AST::_OPERATION,&x,node,2);
+		$$->reg = getRegister();
+		$$->setCode($1->getCode(),"");
+		$$->addCode($3->getCode(),"");
+		$$->addCode($$->getValue()+" := "+$1->getValue()+" * "+$3->getValue());
+	}
+	|TERM DIVIDE FACTOR {
+		if( ($1->dType != $3->dType) && ($1->dType != AST::_VOID) ){
+			return 1;
+		}
+		node = new AST*[2];
+		node[0] = $1;
+		node[1] = $3;
+		AST::OpType x = AST::DIV;
+		$$ = new AST(AST::_OPERATION,&x,node,2);	
+		$$->reg = getRegister();
+		$$->setCode($1->getCode(),"");
+		$$->addCode($3->getCode(),"");
+		$$->addCode($$->getValue()+" := "+$1->getValue()+" / "+$3->getValue());
+	}			
+	|FACTOR {
+		$$ = $1;
+	}
 	;
-	IDLIST:		ID
-			{
-				std::string s($1);
-				$$ = new AST(AST::VARIABLE,&s) ;
+FACTOR:	LP EXPR RP {
+			$$  = $2;
+		}
+		|ID {
+			std::string id($1);
+			$$ = new AST(AST::_VARIABLE,&id);
+			if(getDataType(id,scope)==AST::_VOID){
+				return 1;
 			}
-			|	ID LS NUMBER RS
-			{
-				AST **p = new AST*[2] ;
-				std::string s($1);
-				p[0] = new AST(AST::VARIABLE,&s) ;
-				p[1] = new AST(AST::CONSTANT,&$3) ;
-				$$ = new AST(AST::VARIABLE,p,2) ;
-
-			}
-			|	ID COMMA IDLIST
-			{
-				AST **p = new AST*[2] ;
-				std::string s($1);
-				p[0] = new AST(AST::VARIABLE,&s) ;
-				p[1] = $3 ;
-				$$ = new AST(AST::ID_LIST,p,2) ;
-			}
-			|	ID LS NUMBER RS COMMA IDLIST
-			{
-				AST **p = new AST*[3] ;
-				std::string s($1);
-				p[0] = new AST(AST::VARIABLE,&s) ;
-				p[1] = new AST(AST::CONSTANT,&$3) ;
-				p[2] = $6 ;
-				$$ = new AST(AST::ID_LIST,p,3) ;
-
-			}
-	;
-	WHILESTMT:	WHILE LP EXPR RP STMT
-			{
-				AST **p = new AST*[2] ;
-				p[0] = $3 ;
-				p[1] = $5 ;
-				$$ = new AST(AST::BRANCH,p,2) ;
-			}
-	;
-	IFSTMT:		IF LP EXPR RP STMT ELSEPART
-			{
-				AST **p = new AST*[3] ;
-				p[0] = $3 ;
-				p[1] = $5 ;
-				p[2] = $6 ;
-				$$ = new AST(AST::BRANCH,p,3) ;
-			}
-	;
-	ELSEPART:	ELSE STMT
-			{
-				AST **p = new AST*[1] ;
-				p[0] = $2 ;
-				$$ = new AST(AST::A_ELSE,p,1) ;
-			}
-			|	%prec LOWER_THAN_ELSE
-			{
-				$$ = new AST(0) ;
-			} 
-	;
-	CMPDSTMT:	LB STMTLIST RB
-			{
-					$$ = $2 ;
-			}
-	;
-	STMTLIST:	STMT STMTLIST 
-			{
-				AST **p = new AST*[2] ;
-				p[0] = $1 ;
-				p[1] = $2 ;
-				$$ = new AST(AST::STATEMENT,p,2);
-			}
-			|
-			{
-				$$ = new AST(0) ;
-			}
-	;
-	EXPR:	ID EQUALS EXPR
-			{
-				std::string id($1);
-				AST **p = new AST*[2];
-				p[0] = new AST(AST::VARIABLE,&id);
-				p[1] = $3; 
-				$$ = new AST(AST::ASSIGN,p,2);
-			}
-			|RVALUE{
-				$$ = $1 ;
-			}
-	;
-	RVALUE:	RVALUE COMPARE MAG
-			{
-				$2->childLength=2;
-				$2->childrens = new AST*[2];
-				$2->childrens[0] = $1;
-				$2->childrens[1] = $3;
-				$$ = $2;
-			}
-			|MAG
-			{				
-				$$ = $1;
-			}		
-	;
-	COMPARE:REQUALS	
-			{
-				AST::CondType x = AST::EQ ;
-				$$ = new AST(AST::CONDITION,&x) ;		
-			}
-			|LESS
-			{
-				AST::CondType x = AST::LT ;
-				$$ = new AST(AST::CONDITION,&x) ;
-			}
-			|GREATER
-			{
-				AST::CondType x = AST::GT ;
-				$$ = new AST(AST::CONDITION,&x) ;
-			}
-			|LESSEQ
-			{
-				AST::CondType x = AST::LTE ;
-				$$ = new AST(AST::CONDITION,&x) ;
-			}
-			|GREATEREQ{
-				AST::CondType x = AST::GTE ;
-				$$ = new AST(AST::CONDITION,&x) ;
-			}
-			|NOTEQUAL
-			{
-				AST::CondType x = AST::A_NOT ;
-				$$ = new AST(AST::CONDITION,&x) ;
-			}
-	;
-	MAG:	MAG PLUS TERM 
-			{
-				AST **n1 = new AST*[2];
-				n1[0] = ($1);
-				n1[1] = ($3);
-				AST::OpType x = AST::ADD;
-				$$ = new AST(AST::OPERATION,&x,n1,2) ;	
-			}			
-			|MAG MINUS TERM
-			{
-				AST **n1 = new AST*[2];
-				n1[0] = $1;
-				n1[1] = $3;
-				AST::OpType x = AST::SUB;
-				$$ = new AST(AST::OPERATION,&x,n1,2) ;	
-			}			
-			|TERM 
-			{
-				$$ = $1 ;	
-			}			
-	;
-	TERM:	TERM TIMES FACTOR
-			{
-				AST **n1 = new AST*[2];
-				n1[0] = $1;
-				n1[1] = $3;
-				AST::OpType x = AST::MUL;
-				$$ = new AST(AST::OPERATION,&x,n1,2) ;
-			}			
-			|TERM DIVIDE FACTOR
-			{
-				AST **n1 = new AST*[2];
-				n1[0] = $1;
-				n1[1] = $3;
-				AST::OpType x = AST::DIV;
-				$$ = new AST(AST::OPERATION,&x,n1,2) ;	
-			}			
-			|FACTOR
-			{
-				$$ = $1 ;
-			}
-	;
-	FACTOR:	LP EXPR RP
-			{
-				$$  = $2 ;
-			}
-			|MINUS FACTOR
-			{
-				AST::OpType x = AST::SUB;
-				$$ = new AST(AST::OPERATION,&x,&$2,1) ;
-			}
-			|PLUS FACTOR 
-			{
-				AST **p = new AST*[1];
-				p[0] = $2;
-				AST::OpType x = AST::ADD;
-				$$ = new AST(AST::OPERATION,&x,p,1) ;
-			}
-			|ID 
-			{
-				std::string s($1);
-				$$ = new AST(AST::VARIABLE,&s) ;
-			}
-			|NUMBER 
-			{
-				$$ = new AST(AST::CONSTANT,&$1) ;
-			}
-	;
-
+			$$->reg = getIdRegister(id,scope);
+			$$->dType = getDataType(id,scope);
+		}
+		|NUMBER {
+			$$ = new AST(AST::_CONSTANT,&$1);
+			$$->dType = AST::_INT;
+		}
+		|DECIMAL {
+			$$ = new AST(AST::_CONSTANT,&$1);
+			$$->dType = AST::_FLOAT;
+		}
+		;
 %%
+
 std::string getRegister(){
 	std::stringstream reg;
-	reg<<"L"<<rcount++;
+	reg<<"R"<<rcount++;
 	return 	reg.str();
 }
 
 std::string getLabel(){
 	std::stringstream label;
-	label<<"L"<<lcount++;
+	label<<"L"<<++lcount;
 	return 	label.str();
+}
+
+std::string getLabel(int lastLabel){
+	std::stringstream label;
+	label<<"L"<<lastLabel;
+	return label.str();
+}
+
+std::string oppSymbol(std::string str){
+	if(str==" == ")
+		return " != ";
+	if(str==" >= ")
+		return " < ";
+	if(str==" <= ")
+		return " > ";
+	if(str==" > ")
+		return " <= ";
+	if(str==" < ")
+		return " >= ";
+	if(str==" != ")
+		return " == ";
+}
+
+AST::DataType getDataType(std::string id, int _scope){
+	
+}
+
+std::string getIdRegister(std::string id, int _scope){
+	
 }
 
 int yyerror(char *s){
 	fprintf(stderr, "%s %s %d\n", s , yytext , yylineno );
 	return 0;
 }
-	
-int main(void)	{
+
+int main(void) {
 	yyparse();
 	return 0;
 }
