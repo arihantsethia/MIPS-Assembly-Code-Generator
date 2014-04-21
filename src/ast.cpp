@@ -167,9 +167,6 @@ AST& AST::operator=(const AST& otherNode){
 		revValue = otherNode.revValue;
 		childLength = otherNode.childLength;
 		for(int i=0;i<childLength;i++){
-			delete childrens[i];
-		}
-		for(int i=0;i<childLength;i++){
 			childrens[i] = otherNode.childrens[i]->clone();
 		}
 	}
@@ -215,7 +212,13 @@ std::string AST::getCode(){
 std::string AST::getValue(){
 	std::stringstream s;
 	if(nType ==_CONSTANT){
-		s<< *static_cast<int*>(data);
+		if(dType ==_INT){
+			s<< *static_cast<int*>(data);
+		}else if(dType ==_FLOAT){
+			s<< *static_cast<float*>(data);
+		}else if(dType ==_BOOL){
+			s<< *static_cast<bool*>(data);
+		}
 	}else if(reg!=""){
 		s<<reg;
 	}else if(value.length()>0){

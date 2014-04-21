@@ -10,12 +10,17 @@ extern int yylineno ;
 extern int yylex(void);	
 
 int yyerror(char *);
+bool isDeclared(std::string);
 std::string getRegister();
 std::string getLabel();
 std::string getLabel(int);
 std::string oppSymbol(std::string);
-AST::DataType getDataType(std::string, int);
-std::string getIdRegister(std::string, int);
+AST::DataType getDataType(std::string);
+std::string getIdRegister(std::string);
+void recursiveSetType(AST* , AST::DataType);
+void addToScope(std::string , std::string , AST::DataType);
+
+void addToScope(std::string);
 
 static int lcount=0,rcount=0;
 static int lastLabel =0;

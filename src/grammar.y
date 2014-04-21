@@ -17,7 +17,7 @@
 	%token <vId>	ID
 	%token <vBool>	BOOLEAN
 	%token <vFloat> DECIMAL
-	%start STMT
+	%start _STMT
 	
 	%token	AUTO	BOOL	CHAR	ELSE	FLOAT	IF	INT	LONG	RETURN	SIGNED	WHILE	PLUS	MINUS	TIMES	DIVIDE	EQUALS	NOT	LESS	GREATER	LS	RS	LB	RB	LP	RP	COLON	DOT	SEMI	COMMA	AND	OR	REQUALS	NOTEQUAL	LESSEQ	GREATEREQ
 
@@ -25,6 +25,21 @@
 	%nonassoc ELSE
 
 %%
+
+START: _START
+_START: FUNCTION{
+	
+		}
+		|DECLARATION{
+
+		}
+		|FUNCTION _START{
+
+		}
+		|DECLARATION _START{
+
+		}
+
 FUNCTION: FTYPE ID LP ARGLIST RP CMPDSTMT {
 			std::string id($2);
 			node = new AST*[4];
@@ -52,7 +67,7 @@ ARG: DTYPE ID {
 		std::string id($2);
 		node = new AST*[2];
 		node[0] = $1;
-		node = new AST(AST::_VARIABLE,&id);
+		node[1] = new AST(AST::_VARIABLE,&id);
 		$$ = new AST(AST::_ARG,node,2);
 	}
 	;
@@ -72,6 +87,7 @@ FTYPE: INT {
 		$$->dType = AST::_BOOL;
 	}
 	;
+_STMT : STMTLIST {std::cout<<$1->getCode()<<std::endl;}
 STMT: WHILESTMT {
 		$$ = $1;
 	}
@@ -95,6 +111,7 @@ DECLARATION: DTYPE IDLIST SEMI {
 				node = new AST*[2];
 				node[0] = $1;
 				node[1] = $2;
+				recursiveSetType($2,$1->dType);
 				$$ = new AST(AST::_VAR,node,2);
 			}
 			;
@@ -116,7 +133,8 @@ DTYPE: INT {
 		;
 IDLIST:	ID {
 			std::string id($1);
-			if(getDataType(id,scope)!=AST::_VOID){
+			if(isDeclared(id)){
+				std::cout<<"Variable already declared before"<<std::endl;
 				return 1;
 			}
 			$$ = new AST(AST::_VARIABLE,&id);
@@ -130,7 +148,8 @@ IDLIST:	ID {
 		}
 		|ID COMMA IDLIST {
 			std::string id($1);
-			if((getDataType(id,scope) != $3->dType) || (getDataType(id,scope) != AST::_VOID)){
+			if(isDeclared(id) || (getDataType(id) != AST::_VOID)){
+				std::cout<<"Type Mismatch Error"<<std::endl;
 				return 1;
 			}
 			node = new AST*[2];
@@ -149,6 +168,7 @@ IDLIST:	ID {
 		;
 WHILESTMT: WHILE LP EXPR RP STMT {
 				if($3->dType != AST::_BOOL || $5->dType != AST::_VOID){
+					std::cout<<"Type Mismatch Error " << std::endl;
 					return 1;
 				}
 				node = new AST*[2];
@@ -156,15 +176,17 @@ WHILESTMT: WHILE LP EXPR RP STMT {
 				node[1] = $5;
 				std::string label = getLabel();
 				$$ = new AST(AST::_BRANCH,node,2);
-				$$->setCode($3->getCode());
-				$$->addCode(label+": if "+$3->getRevValue()+" goto "+getLabel());
+				$$->setCode($3->getCode(),"");
+				$$->addCode(label+":");
+				$$->addCode("if "+$3->getRevValue()+" goto "+getLabel());
 				$$->addCode($5->getCode(),"");
 				$$->addCode("goto "+label);
-				$$->addCode(getLabel(lcount)+": ","");
+				$$->addCode(getLabel(lcount)+":");
 			}
 			;
 IFSTMT:	IF LP EXPR RP STMT ELSEPART {
 			if($3->dType != AST::_BOOL || $5->dType != AST::_VOID || $6->dType != AST::_VOID){
+				std::cout<<"Type Mismatch Error"<<std::endl;
 				return 1;
 			}
 			node = new AST*[3];
@@ -172,14 +194,19 @@ IFSTMT:	IF LP EXPR RP STMT ELSEPART {
 			node[1] = $5;
 			node[2] = $6;
 			$$ = new AST(AST::_BRANCH,node,3);
-			$$->setCode($3->getCode());
+			std::cout<<"Asd"<<$3->dType<<std::endl;
+			$$->setCode($3->getCode(),"");
 			$$->addCode("if "+$3->getRevValue()+" goto "+getLabel());
 			$$->addCode($5->getCode(),"");
-			$$->addCode(getLabel(lcount)+": "+$6->getCode());
+			$$->addCode(getLabel(lcount)+": \n"+$6->getCode(),"");
 			$$->dType = AST::_VOID;
 		}
 		;
 ELSEPART:ELSE STMT {
+			if($2->dType != AST::_VOID){
+				std::cout<<"Type Mismatch Error"<<std::endl;
+				return 1;
+			}
 			node = new AST*[1];
 			node[0] = $2;
 			$$ = new AST(AST::_ELSE,node,1);
@@ -191,13 +218,20 @@ ELSEPART:ELSE STMT {
 			$$->dType = AST::_VOID;
 		} 
 		;
-CMPDSTMT: LB STMTLIST RB {
+CMPDSTMT: _LB STMTLIST _RB {
 			$$ = $2;
 			$$->dType = AST::_VOID;
 		}
 		;
+_LB: LB {
+		scope = scope+1;
+	}
+_RB: RB {
+		scope = scope-1;
+	}
 STMTLIST: STMT STMTLIST {
 			if($1->dType != AST::_VOID || $2->dType != AST::_VOID){
+				std::cout<<"Type Mismatch Error"<<std::endl;
 				return 1;
 			}
 			node = new AST*[2];
@@ -213,7 +247,8 @@ STMTLIST: STMT STMTLIST {
 		;
 ASSIGN:	ID EQUALS EXPR {
 			std::string id($1);
-			if(getDataType(id,scope) == AST::_VOID || getDataType(id,scope) != $3->dType){
+			if(getDataType(id) == AST::_VOID || getDataType(id) != $3->dType){
+				std::cout<<"Type Mismatch Error or Variable Not Declared Error Line : "<<yylineno<<std::endl;
 				return 1;
 			}
 			node = new AST*[2];
@@ -221,14 +256,16 @@ ASSIGN:	ID EQUALS EXPR {
 			node[1] = $3;
 			$$ = new AST(AST::_ASSIGN,node,2);
 			$$->setCode($3->getCode(),"");
-			$$->addCode(id+" := "+$3->getValue());
+			$$->addCode(getIdRegister(id)+" := "+$3->getValue());
 			$$->dType =AST::_VOID;
 		}
 		;
 EXPR: EXPR COMPARE MAG {
-		if( ($1->dType == $3->dType) && ($1->dType != AST::_VOID) ){
+		if( ($1->dType != $3->dType) || ($1->dType == AST::_VOID) || ($3->dType == AST::_VOID) ){
+			std::cout<<"Type Mismatch Error Line : "<<yylineno<<std::endl;
 			return 1;
 		}
+		std::string condition = $2->getCode();
 		$$ = $2;
 		$$->childLength=2;
 		$$->childrens = new AST*[2];
@@ -236,16 +273,24 @@ EXPR: EXPR COMPARE MAG {
 		$$->childrens[1] = $3;
 		$$->setCode($1->getCode(),"");
 		$$->setCode($3->getCode(),"");
-		$$->value = $1->getValue()+$2->getCode()+$3->getValue()	;
-		$$->revValue = $1->getValue()+oppSymbol($2->getCode())+$3->getValue();
+		$$->value = $1->getValue()+condition+$3->getValue()	;
+		$$->revValue = $1->getValue()+oppSymbol(condition)+$3->getValue();
 		$$->dType = AST::_BOOL;
 	}
 	|MAG {
 		$$ = $1;
+		$$->revValue = $$->reg +" == "+"0";
 	}
 	|BOOLEAN{
 		$$ = new AST(AST::_CONSTANT,&$1);
-		SS->dType = AST::_BOOL;
+		$$->dType = AST::_BOOL;
+		if($1){
+			$$->value="true";
+			$$->revValue = "false";;
+		} else{
+			$$->value = "false";
+			$$->revValue = "true";
+		}
 	}
 	;
 COMPARE:REQUALS	{
@@ -280,7 +325,8 @@ COMPARE:REQUALS	{
 	}
 	;
 MAG: MAG PLUS TERM {
-		if( ($1->dType != $3->dType) && ($1->dType != AST::_VOID) ){
+		if( ($1->dType != $3->dType) || ($1->dType == AST::_VOID) || ($3->dType == AST::_VOID) ){
+			std::cout<<"Type Mismatch Error Line : "<<yylineno<<std::endl;
 			return 1;
 		}
 		node = new AST*[2];
@@ -291,10 +337,12 @@ MAG: MAG PLUS TERM {
 		$$->reg = getRegister();
 		$$->setCode($1->getCode(),"");
 		$$->addCode($3->getCode(),"");
-		$$->addCode($$->getValue()+" := "+$1->getValue()+" + "+$3->getValue());	
+		$$->addCode($$->getValue()+" := "+$1->getValue()+" + "+$3->getValue());
+		$$->dType = $1->dType;	
 	}
 	|MAG MINUS TERM {
-		if( ($1->dType != $3->dType) && ($1->dType != AST::_VOID) ){
+		if( ($1->dType != $3->dType) || ($1->dType == AST::_VOID) || ($3->dType == AST::_VOID) ){
+			std::cout<<"Type Mismatch Error Line : "<<yylineno<<std::endl;
 			return 1;
 		}
 		node = new AST*[2];
@@ -305,14 +353,16 @@ MAG: MAG PLUS TERM {
 		$$->reg = getRegister();
 		$$->setCode($1->getCode(),"");
 		$$->addCode($3->getCode(),"");
-		$$->addCode($$->getValue()+" := "+$1->getValue()+" - "+$3->getValue());	
+		$$->addCode($$->getValue()+" := "+$1->getValue()+" - "+$3->getValue());
+		$$->dType = $1->dType;
 	}
 	|TERM {
 		$$ = $1;
 	}
 	;
 TERM: TERM TIMES FACTOR {
-		if( ($1->dType != $3->dType) && ($1->dType != AST::_VOID) ){
+		if( ($1->dType != $3->dType) || ($1->dType == AST::_VOID) || ($3->dType == AST::_VOID) ){
+			std::cout<<"Type Mismatch Error Line : "<<yylineno<<std::endl;
 			return 1;
 		}
 		node = new AST*[2];
@@ -324,9 +374,11 @@ TERM: TERM TIMES FACTOR {
 		$$->setCode($1->getCode(),"");
 		$$->addCode($3->getCode(),"");
 		$$->addCode($$->getValue()+" := "+$1->getValue()+" * "+$3->getValue());
+		$$->dType = $1->dType;
 	}
 	|TERM DIVIDE FACTOR {
-		if( ($1->dType != $3->dType) && ($1->dType != AST::_VOID) ){
+		if( ($1->dType != $3->dType) || ($1->dType == AST::_VOID) || ($3->dType == AST::_VOID) ){
+			std::cout<<"Type Mismatch Error Line : "<<yylineno<<std::endl;
 			return 1;
 		}
 		node = new AST*[2];
@@ -338,6 +390,7 @@ TERM: TERM TIMES FACTOR {
 		$$->setCode($1->getCode(),"");
 		$$->addCode($3->getCode(),"");
 		$$->addCode($$->getValue()+" := "+$1->getValue()+" / "+$3->getValue());
+		$$->dType = $1->dType;
 	}			
 	|FACTOR {
 		$$ = $1;
@@ -349,11 +402,12 @@ FACTOR:	LP EXPR RP {
 		|ID {
 			std::string id($1);
 			$$ = new AST(AST::_VARIABLE,&id);
-			if(getDataType(id,scope)==AST::_VOID){
+			if(getDataType(id)==AST::_VOID){
+				std::cout<<"Variable Not Declared Error Line : "<<yylineno<<std::endl;
 				return 1;
 			}
-			$$->reg = getIdRegister(id,scope);
-			$$->dType = getDataType(id,scope);
+			$$->reg = getIdRegister(id);
+			$$->dType = getDataType(id);
 		}
 		|NUMBER {
 			$$ = new AST(AST::_CONSTANT,&$1);
@@ -399,12 +453,44 @@ std::string oppSymbol(std::string str){
 		return " == ";
 }
 
-AST::DataType getDataType(std::string id, int _scope){
-	
+void recursiveSetType(AST* node, AST::DataType dType){
+	std::string reg;
+	if(node->childLength == 0){
+		reg = getRegister();
+		addToScope(*static_cast<std::string*>(node->data),reg,dType);
+		return ;
+	}
+	recursiveSetType(node->childrens[0],dType);
+	recursiveSetType(node->childrens[1],dType);
 }
 
-std::string getIdRegister(std::string id, int _scope){
-	
+void addToScope(std::string id, std::string reg, AST::DataType dType){
+	SymbolTable *symbolTableEntry = new SymbolTable(id,reg,dType,scope);
+	symbolTable[scope][id] = *symbolTableEntry;
+}
+
+AST::DataType getDataType(std::string id){
+	for(int i=scope; i>=0; i--) {
+		if(symbolTable[i].find(id)!=symbolTable[i].end()) {
+			return symbolTable[i][id].dType;
+		}
+	}
+	return AST::_VOID;
+}
+
+bool isDeclared(std::string id){
+	if(symbolTable[scope].find(id)!=symbolTable[scope].end()) {
+		return true;
+	}
+	return false;
+}
+
+std::string getIdRegister(std::string id){
+	for(int i=scope; i>=0; i--) {
+		if(symbolTable[i].find(id)!=symbolTable[i].end()) {
+			return symbolTable[i][id].reg;
+		}
+	}
 }
 
 int yyerror(char *s){
