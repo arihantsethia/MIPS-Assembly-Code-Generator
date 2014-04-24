@@ -1,6 +1,7 @@
 %{
 	#include "headers/grammar.h"
 	AST **node;
+	std::ofstream fout("mid.txt");
 %}
 	%union
 	{
@@ -11,13 +12,12 @@
 		char* vId;
 	}
 
-	%type <vNode>	EXPR	MAG	TERM	FACTOR	COMPARE	FUNCTION	ARGLIST	ARG	FTYPE	STMT	DECLARATION	DTYPE	IDLIST	WHILESTMT	IFSTMT	ELSEPART	CMPDSTMT	STMTLIST	ASSIGN
+	%type <vNode>	EXPR	MAG	TERM	FACTOR	COMPARE	STMT	DECLARATION	DTYPE	IDLIST	WHILESTMT	IFSTMT	ELSEPART	CMPDSTMT	STMTLIST	ASSIGN
 
 	%token <vInt>	NUMBER
 	%token <vId>	ID
 	%token <vBool>	BOOLEAN
 	%token <vFloat> DECIMAL
-	%start _STMT
 	
 	%token	AUTO	BOOL	CHAR	ELSE	FLOAT	IF	INT	LONG	RETURN	SIGNED	WHILE	PLUS	MINUS	TIMES	DIVIDE	EQUALS	NOT	LESS	GREATER	LS	RS	LB	RB	LP	RP	COLON	DOT	SEMI	COMMA	AND	OR	REQUALS	NOTEQUAL	LESSEQ	GREATEREQ
 
@@ -26,68 +26,11 @@
 
 %%
 
-START: _START
-_START: FUNCTION{
-	
-		}
-		|DECLARATION{
-
-		}
-		|FUNCTION _START{
-
-		}
-		|DECLARATION _START{
-
-		}
-
-FUNCTION: FTYPE ID LP ARGLIST RP CMPDSTMT {
-			std::string id($2);
-			node = new AST*[4];
-			node[0] = $1;
-			node[1] = new AST(AST::_VARIABLE,&id);
-			node[2] = $4;
-			node[3] = $6;
-			$$ = new AST(AST::_FUNCTION,node,4);
-		}
-		;
-ARGLIST: ARG{
-			$$ = $1;
-		}
-		|ARG COMMA ARGLIST {
-			node = new AST*[2];
-			node[0] = $1;
-			node[1] = $3;
-			$$ = new AST(AST::_ARGLIST,node,2);
-		}
-		| {
-			$$ = new AST(0);
-		}
-		;
-ARG: DTYPE ID {
-		std::string id($2);
-		node = new AST*[2];
-		node[0] = $1;
-		node[1] = new AST(AST::_VARIABLE,&id);
-		$$ = new AST(AST::_ARG,node,2);
-	}
-	;
-FTYPE: INT {
-		AST::DataType x = AST::_INT;
-		$$ = new AST(AST::_FTYPE,&x);
-		$$->dType = AST::_INT;
-	}
-	| FLOAT {
-		AST::DataType x = AST::_FLOAT;
-		$$ = new AST(AST::_FTYPE,&x);
-		$$->dType = AST::_FLOAT;
-	}
-	| BOOL {
-		AST::DataType x = AST::_BOOL;
-		$$ = new AST(AST::_FTYPE,&x);
-		$$->dType = AST::_BOOL;
-	}
-	;
-_STMT : STMTLIST {std::cout<<$1->getCode()<<std::endl;}
+START: STMTLIST {
+					std::ofstream out("out.txt");
+					out<<$1->getCode();
+					out.close();
+				}
 STMT: WHILESTMT {
 		$$ = $1;
 	}
@@ -178,9 +121,9 @@ WHILESTMT: WHILE LP EXPR RP STMT {
 				$$ = new AST(AST::_BRANCH,node,2);
 				$$->setCode($3->getCode(),"");
 				$$->addCode(label+":");
-				$$->addCode("if "+$3->getRevValue()+" goto "+getLabel());
+				$$->addCode("if "+$3->reg+" goto "+getLabel()+":");
 				$$->addCode($5->getCode(),"");
-				$$->addCode("goto "+label);
+				$$->addCode("goto "+label+":");
 				$$->addCode(getLabel(lcount)+":");
 			}
 			;
@@ -194,9 +137,8 @@ IFSTMT:	IF LP EXPR RP STMT ELSEPART {
 			node[1] = $5;
 			node[2] = $6;
 			$$ = new AST(AST::_BRANCH,node,3);
-			std::cout<<"Asd"<<$3->dType<<std::endl;
 			$$->setCode($3->getCode(),"");
-			$$->addCode("if "+$3->getRevValue()+" goto "+getLabel());
+			$$->addCode("if "+$3->reg+" goto "+getLabel()+":");
 			$$->addCode($5->getCode(),"");
 			$$->addCode(getLabel(lcount)+": \n"+$6->getCode(),"");
 			$$->dType = AST::_VOID;
@@ -256,7 +198,11 @@ ASSIGN:	ID EQUALS EXPR {
 			node[1] = $3;
 			$$ = new AST(AST::_ASSIGN,node,2);
 			$$->setCode($3->getCode(),"");
-			$$->addCode(getIdRegister(id)+" := "+$3->getValue());
+			if($3->reg==""){
+				$$->addCode(getIdRegister(id)+" := "+$3->getValue());
+			}else{
+				$$->addCode(getIdRegister(id)+" := "+$3->reg);
+			}
 			$$->dType =AST::_VOID;
 		}
 		;
@@ -272,9 +218,9 @@ EXPR: EXPR COMPARE MAG {
 		$$->childrens[0] = $1;
 		$$->childrens[1] = $3;
 		$$->setCode($1->getCode(),"");
-		$$->setCode($3->getCode(),"");
-		$$->value = $1->getValue()+condition+$3->getValue()	;
-		$$->revValue = $1->getValue()+oppSymbol(condition)+$3->getValue();
+		$$->addCode($3->getCode(),"");
+		$$->reg = getRegister();
+		$$->addCode($$->reg+" := "+$1->getValue()+oppSymbol(condition)+$3->getValue());
 		$$->dType = AST::_BOOL;
 	}
 	|MAG {
@@ -284,13 +230,8 @@ EXPR: EXPR COMPARE MAG {
 	|BOOLEAN{
 		$$ = new AST(AST::_CONSTANT,&$1);
 		$$->dType = AST::_BOOL;
-		if($1){
-			$$->value="true";
-			$$->revValue = "false";;
-		} else{
-			$$->value = "false";
-			$$->revValue = "true";
-		}
+		$$->reg = getRegister();
+		$$->setCode($$->reg+" := "+$$->getValue());
 	}
 	;
 COMPARE:REQUALS	{
@@ -423,6 +364,8 @@ FACTOR:	LP EXPR RP {
 std::string getRegister(){
 	std::stringstream reg;
 	reg<<"R"<<rcount++;
+	fout<<reg.str();
+	fout<<std::endl;
 	return 	reg.str();
 }
 
